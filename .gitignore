@@ -2,11 +2,18 @@
 .venv/
 venv/
 env/
+
 # Python cache
 __pycache__/
 *.py[cod]
+
 # Archivos temporales
 *.log
 .DS_Store
+
 # Streamlit secrets
 .streamlit/secrets.toml
+
+# Variables de entorno
+.env
+

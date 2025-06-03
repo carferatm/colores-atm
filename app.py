@@ -8,7 +8,7 @@ import io
 import faiss
 import time
 from typing import List
-from github_utils import obtener_equivalencias_csv, agregar_equivalencia_a_github
+from github_utils import obtener_equivalencias_csv, subir_equivalencias_actualizadas
 
 st.set_page_config(page_title="Normalizador de Colores ATM", layout="wide")
 
@@ -29,7 +29,7 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", st.secrets["github"]["token"])
 colores_atm = [
     "Rojo", "Amarillo", "Azul", "Azul Marino", "Naranja", "Verde", "Morado", "Rosa", "Blanco", "Negro",
     "Beige", "Marrón", "Gris", "Azul Royal", "Fucsia", "Granate", "Lila", "Coral", "Kaki", "Lima", "Verde Oliva",
-    "Salmón", "Plata","Dorado"
+    "Salmón", "Plata", "Dorado"
 ]
 
 def crear_o_cargar_faiss(api_key: str, modelo: str):
@@ -113,7 +113,6 @@ if csv_file and "api_key" in st.session_state:
 
             colores_existentes = []
             colores_por_normalizar = []
-            mapeo_resultado = {}
 
             for color in colores_flat:
                 if color in equivalencias:
@@ -139,17 +138,16 @@ if csv_file and "api_key" in st.session_state:
                     emb_entrada
                 )
 
-                for original, normalizado in zip(colores_por_normalizar, nuevos_resultados):
-                    agregar_equivalencia_a_github(
-                        REPO_GITHUB,
-                        ARCHIVO_EQUIVALENCIAS,
-                        GITHUB_TOKEN,
-                        f"{original},{normalizado}"
-                    )
+                equivalencias.update(dict(zip(colores_por_normalizar, nuevos_resultados)))
+                subir_equivalencias_actualizadas(
+                    REPO_GITHUB,
+                    ARCHIVO_EQUIVALENCIAS,
+                    GITHUB_TOKEN,
+                    equivalencias
+                )
 
-                colores_dict = dict(zip(colores_por_normalizar, nuevos_resultados))
                 for color in colores_flat:
-                    colores_existentes.append(equivalencias.get(color, colores_dict.get(color, f"UNKNOWN({color})")))
+                    colores_existentes.append(equivalencias.get(color, f"UNKNOWN({color})"))
 
             idx = 0
             colores_por_fila = []
@@ -162,6 +160,8 @@ if csv_file and "api_key" in st.session_state:
             df["colores atm"] = colores_por_fila
 
         st.success("Procesamiento completo")
+        num_trabajados = df["colores atm"].notnull().sum()
+        st.info(f"Nº total de productos trabajados: {num_trabajados}")
         st.download_button("Descargar CSV con colores ATM",
                            data=df.to_csv(index=False).encode("utf-8"),
                            file_name="colores_atm.csv",
@@ -170,5 +170,3 @@ if csv_file and "api_key" in st.session_state:
 
 elif csv_file:
     st.warning("Debes ingresar y guardar la API Key de OpenAI para continuar.")
-
-
